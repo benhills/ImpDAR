@@ -52,16 +52,14 @@ def _get_args():
                                  help='number of chirps to stack (default: stack all)')
     parser_singleproc.add_argument('-noise_bed_range',
                                  type=float,
-                                 help='bed range under which \
-                                    the noise phasor will be calculated')
+                                 help='bed range under which the noise phasor will be calculated')
     parser_singleproc.set_defaults(max_range=4000., num_chirps=0, noise_bed_range=3000.)
     _add_def_args(parser_singleproc)
 
     # Full Difference Processing
     parser_diffproc = _add_procparser(subparsers,
                                     'diffproc',
-                                    'create an ApresDiff object and then execuate \
-                                        the full differencing processing flow',
+                                    'create an ApresDiff object and then execute the full differencing processing flow',
                                     time_diff_processing,
                                     'diffproc')
     parser_diffproc.add_argument('-window',
@@ -106,8 +104,7 @@ def _get_args():
     # Initial range conversion (deramping)
     parser_range = _add_procparser(subparsers,
                                   'range',
-                                  'convert the recieved waveform to a \
-                                        range-amplitude array',
+                                  'convert the recieved waveform to a range-amplitude array',
                                   range_conversion,
                                   'range')
     parser_range.add_argument('-max_range',
@@ -136,16 +133,14 @@ def _get_args():
                                   'uncertainty')
     parser_unc.add_argument('-noise_bed_range',
                             type=float,
-                            help='bed range under which \
-                                    the noise phasor will be calculated',
+                            help='bed range under which the noise phasor will be calculated',
                             default=3000.)
     _add_def_args(parser_unc)
 
     # Phase Differencing
     parser_pdiff = _add_procparser(subparsers,
                                   'pdiff',
-                                  'unwrap the differenced phase profile \
-                                       from top to bottom',
+                                  'calculate correlation between the two acquisitions',
                                   phase_differencing,
                                   'pdiff')
     parser_pdiff.add_argument('-window',
@@ -160,8 +155,7 @@ def _get_args():
     # Phase Unwrap
     parser_unwrap = _add_procparser(subparsers,
                                   'unwrap',
-                                  'unwrap the differenced phase profile \
-                                       from top to bottom',
+                                  'unwrap the differenced phase profile from top to bottom',
                                   unwrap)
     _add_def_args(parser_unwrap)
 
@@ -221,7 +215,8 @@ def _get_args():
     parser_plot = _add_procparser(subparsers,
                                   'plot',
                                   'plot apres data from a single acquisition',
-                                  plot_apres)
+                                  plot_apres,
+                                  'plot')
     parser_plot.add_argument('-acq_type',
                                  type=str,
                                  help='Acquisition type',
@@ -276,7 +271,9 @@ def main():
         name = args.name
         args.func(apres_data, **vars(args))
 
-    if args.o is not None:
+    if args.name == 'plot':
+        return
+    elif args.o is not None:
         out_fn = args.o
         apres_data.save(out_fn)
     else:
