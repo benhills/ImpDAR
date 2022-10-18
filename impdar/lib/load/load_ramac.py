@@ -19,7 +19,7 @@ from ..RadarData import RadarData
 from ..gpslib import nmea_info, conversions_enabled
 
 
-def load_ramac(ramac_fn):
+def load_ramac(ramac_fn, ftype='.rd7', gps_type='.cor'):
     """Return a impdar.lib.RadarData.RadarData object loaded from a Ramac file.
 
     Parameters
@@ -32,20 +32,20 @@ def load_ramac(ramac_fn):
     # We can take headers, base filenames, or data files
     if len(ramac_fn) <= 4:
         header_fn = ramac_fn + '.rad'
-        data_fn = ramac_fn + '.rd3'
-        gps_fn = ramac_fn + '.cor'
-    elif ramac_fn[-4:] == '.rd3':
+        data_fn = ramac_fn + ftype
+        gps_fn = ramac_fn + gps_type
+    elif ramac_fn[-4:] == ftype:
         header_fn = ramac_fn[:-3] + 'rad'
-        data_fn = ramac_fn[:-3] + 'rd3'
-        gps_fn = ramac_fn[:-3] + 'cor'
+        data_fn = ramac_fn[:-3] + ftype[1:]
+        gps_fn = ramac_fn[:-3] + gps_type[1:]
     elif ramac_fn[-4:] != '.rad':
         header_fn = ramac_fn + '.rad'
-        data_fn = ramac_fn + '.rd3'
-        gps_fn = ramac_fn + '.cor'
+        data_fn = ramac_fn + ftype
+        gps_fn = ramac_fn + gps_type
     else:
         header_fn = ramac_fn
-        data_fn = ramac_fn[:-3] + 'rd3'
-        gps_fn = ramac_fn[:-3] + 'cor'
+        data_fn = ramac_fn[:-3] + ftype[1:]
+        gps_fn = ramac_fn[:-3] + gps_type[1:]
 
     ramac_data.fn = data_fn
 
@@ -129,9 +129,14 @@ def load_ramac(ramac_fn):
         ramac_data.elev = np.arange(ramac_data.tnum)
     ramac_data.pressure = np.zeros_like(ramac_data.dist)
 
+    if ftype == '.rd7':
+        dform = '>{:d}l'
+    else:
+        dform = '<{:d}h'
+
     with open(data_fn, 'rb') as f_data:
         ramac_data.data = np.array(
-            struct.unpack('<{:d}h'.format(
+            struct.unpack(dform.format(
                 ramac_data.tnum * ramac_data.snum), f_data.read()[:]),
             dtype=np.int16).reshape((ramac_data.snum, ramac_data.tnum),
                                     order='F')
