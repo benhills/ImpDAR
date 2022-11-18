@@ -189,13 +189,21 @@ def load_apres_single_file(fn_apres, burst=1, fs=40000, *args, **kwargs):
             apres_data.header.ci = 3e8/np.sqrt(apres_data.header.er)
             apres_data.header.lambdac = apres_data.header.ci/apres_data.header.fc
 
+
             # Load each chirp into a row
             # preallocate array
             data_load = np.zeros((apres_data.cnum, apres_data.snum))
             apres_data.chirp_num = np.arange(apres_data.cnum)
             apres_data.chirp_att = np.zeros((apres_data.cnum)).astype(np.cdouble)
             apres_data.chirp_time = np.zeros((apres_data.cnum))
-            apres_data.header.chirp_interval = 1.6384/(24.*3600.)  # in days; apparently this is always the interval?
+            # Get chirp timing
+            if apres_data.header.ramp_dir == 'up':
+                tstep = apres_data.header.tstep_up
+            elif apres_data.header.ramp_dir == 'down':
+                tstep = apres_data.header.tstep_down
+            chirp_time = tstep*apres_data.header.nchirp_samples
+            interchirp_delay = apres_data.header.interchirp_delay
+            apres_data.header.chirp_interval = (chirp_time+interchirp_delay)/(24.*3600.)   # in days
             for chirp in range(apres_data.cnum):
                 data_load[chirp, :] = apres_data.data[start_ind[chirp]: end_ind[chirp]]
                 # attenuator setting for chirp
@@ -274,7 +282,7 @@ def load_burst(self, burst=1, fs=40000, max_header_len=2000, burst_pointer=0):
         try:
             # Read header values
             strings = ['N_ADC_SAMPLES=', 'NSubBursts=', 'Average=', 'nAttenuators=', 'Attenuator1=',
-                       'AFGain=', 'TxAnt=', 'RxAnt=']
+                       'AFGain=', 'TxAnt=', 'RxAnt=', 'InterChirpDelay=']
             output = np.empty((len(strings))).astype(str)
             for i, string in enumerate(strings):
                 if string in self.header.header_string:
@@ -298,6 +306,8 @@ def load_burst(self, burst=1, fs=40000, max_header_len=2000, burst_pointer=0):
 
             self.header.tx_ant = self.header.tx_ant[self.header.tx_ant == 1]
             self.header.rx_ant = self.header.rx_ant[self.header.rx_ant == 1]
+
+            self.header.interchirp_delay = float(output[8])/1000.
 
             if self.header.average != 0:
                 self.cnum = 1
