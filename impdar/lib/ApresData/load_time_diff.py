@@ -84,6 +84,7 @@ def load_time_diff(fn, load_single_acquisitions=True, *args, **kwargs):
         diff_data.data = dat1.data.flatten().astype(complex)
         diff_data.data2 = dat2.data.flatten().astype(complex)
         diff_data.decday = dat1.decday
+        diff_data.decday2 = dat2.decday
         diff_data.range = dat1.Rcoarse
         diff_data.dt = dat1.dt
         diff_data.travel_time = dat1.travel_time

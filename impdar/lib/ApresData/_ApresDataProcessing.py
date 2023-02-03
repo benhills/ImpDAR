@@ -19,7 +19,7 @@ Sept 23 2019
 """
 
 import numpy as np
-
+from ..ImpdarError import ImpdarError
 
 def apres_range(self, p, max_range=4000, winfun='blackman'):
     """
@@ -53,7 +53,7 @@ def apres_range(self, p, max_range=4000, winfun='blackman'):
     """
 
     if self.flags.range != 0:
-        raise TypeError('The range filter has already been done on these data.')
+        raise ImpdarError('The range filter has already been done on these data.')
 
     # Processing settings
     nf = int(np.floor(p*self.snum/2))    # number of frequencies to recover
@@ -138,7 +138,7 @@ def phase_uncertainty(self, bed_range):
     """
 
     if self.flags.range == 0:
-        raise TypeError('The range filter has not been executed on this data class, do that before the uncertainty calculation.')
+        raise ImpdarError('The range filter has not been executed on this data class, do that before the uncertainty calculation.')
 
     # Get measured phasor from the data class, and use the median magnitude for noise phasor
     meas_phasor = np.squeeze(self.data)
@@ -188,7 +188,7 @@ def phase2range(self, phi, lambdac=None, rc=None, K=None, ci=None):
     return r
 
 
-def stacking(self, num_chirps=None):
+def stacking(self, num_chirps=None, noise_filter=False, llim=-2000, ulim='end', threshold = 1.):
     """
     Stack traces/chirps together to beat down the noise.
     Can stack across bursts if multiple are present.
@@ -200,6 +200,9 @@ def stacking(self, num_chirps=None):
     num_chirps: int
         number of chirps to average over
     """
+
+    if self.flags.stack != 0:
+        raise ImpdarError('The stacking filter has already been done on these data.')
 
     if num_chirps == None:
         num_chirps = self.cnum*self.bnum
@@ -214,6 +217,18 @@ def stacking(self, num_chirps=None):
         data_hold = np.reshape(self.data,(1,self.cnum*self.bnum,self.snum))
         # take only the first set of chirps
         data_hold = data_hold[:,:num_chirps,:]
+
+        if noise_filter:
+            if self.flags.range == 0:
+                raise ImpdarError('The range filter has not been executed on this data class, do that before stacking with the noise filter on.')
+            if ulim == 'end':
+                ulim = self.snum
+            med_level = np.median(np.real(10.*np.log10(data_hold[llim:ulim])))
+            med_prof = np.squeeze(np.median(np.real(10.*np.log10(data_hold[llim:ulim])),axis=-1))
+            idxs = med_prof > med_level + threshold
+            print('Filtering %s noisy traces out.' %len(idxs[idxs]))
+            data_hold = data_hold[:,~idxs].copy()
+            num_chirps -= len(idxs[idxs])
 
         self.data = np.array([np.mean(data_hold,axis=1)])
         self.bnum = 1
