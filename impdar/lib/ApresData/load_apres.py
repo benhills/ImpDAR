@@ -289,9 +289,9 @@ def load_burst(self, burst=1, fs=40000, max_header_len=2000, burst_pointer=0):
             self.header.average = int(output[2])
             self.header.n_subbursts = int(output[1])
             self.header.n_attenuators = int(output[3])
-            self.header.attenuator1 = np.array(output[4].split(',')).astype(int)[
+            self.header.attenuator1 = np.array(output[4].split(',')).astype(float)[
                 :self.header.n_attenuators]
-            self.header.attenuator2 = np.array(output[5].split(',')).astype(int)[
+            self.header.attenuator2 = np.array(output[5].split(',')).astype(float)[
                 :self.header.n_attenuators]
             self.header.tx_ant = np.array(output[6].split(',')).astype(int)
             self.header.rx_ant = np.array(output[7].split(',')).astype(int)
@@ -538,10 +538,10 @@ def load_BAS_nc(fn, fs=40000, chirp_interval=1.6384/(24.*3600.), *args, **kwargs
         apres_data.header.lambdac = apres_data.header.ci/apres_data.header.fc
         apres_data.header.n_attenuators = int(attrs['nAttenuators'])
         str_attenuators = attrs['Attenuator1']
-        apres_data.header.attenuator1 = np.array(str_attenuators.split(',')).astype(int)[
+        apres_data.header.attenuator1 = np.array(str_attenuators.split(',')).astype(float)[
                                                     :apres_data.header.n_attenuators]
         AFGain = attrs['AFGain']
-        apres_data.header.attenuator2 = np.array(AFGain.split(',')).astype(int)[
+        apres_data.header.attenuator2 = np.array(AFGain.split(',')).astype(float)[
                                                     :apres_data.header.n_attenuators]
         apres_data.header.tx_ant = attrs['TxAnt']
         apres_data.header.rx_ant = attrs['RxAnt']

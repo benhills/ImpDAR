@@ -209,7 +209,7 @@ class ApresHeader():
         self.snum = int(output[1])
 
         self.nsteps_DDS = round(abs((self.f_stop - self.f0)/self.ramp_up_step)) # abs as ramp could be down
-        self.chirp_length = int(self.nsteps_DDS * self.tstep_up)
+        self.chirp_length = self.nsteps_DDS * self.tstep_up
         self.nchirp_samples = round(self.chirp_length * self.fs)
 
         # If number of ADC samples collected is less than required to collect
