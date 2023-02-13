@@ -89,7 +89,7 @@ def load_mcords_mat(fn_mat):
     try:
         mat = loadmat(fn_mat)
     except:
-        mat = h5py.File('AR_20140424_03_018.mat', 'r')
+        mat = h5py.File(fn_mat, 'r')
 
     if ('Data' not in mat) or ('Longitude' not in mat):
         if ('data' in mat) and ('long' in mat):
