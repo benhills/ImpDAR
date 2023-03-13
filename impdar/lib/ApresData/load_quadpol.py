@@ -28,7 +28,7 @@ from .load_apres import load_apres
 from ..ImpdarError import ImpdarError
 
 
-def load_quadpol(fn, ftype='mat', load_single_pol=True, *args, **kwargs):
+def load_quadpol(fn, ftype='mat', load_single_pol=True, both_cross=True, *args, **kwargs):
     """Load processed apres profiles from all four polarizations: hh, hv, vh, vv
     into one data object for a quad polarized acquisition.
 
@@ -36,6 +36,11 @@ def load_quadpol(fn, ftype='mat', load_single_pol=True, *args, **kwargs):
     ----------
     fn: either  string of site name where fn = site name + polarization name
         or      list of file names in the correct order - hh, hv, vh, vv
+    ftype:
+
+    load_single_pol:
+
+    both_cross:
 
     Returns
     -------
@@ -47,17 +52,25 @@ def load_quadpol(fn, ftype='mat', load_single_pol=True, *args, **kwargs):
         quadpol_data = ApresQuadPol(fn)
     else:
         # Load each of the individual polarizations as their own ApresData object
-        polarizations = ['HH', 'HV', 'VH', 'VV']
+        if both_cross:
+            polarizations = ['HH', 'HV', 'VH', 'VV']
+        else:
+            polarizations = ['HH', 'VH', 'VV']
         if isinstance(fn, str):
-            fns = [glob.glob(fn + '_{:s}.*'.format(pol)) for pol in polarizations]
+            fns = [glob.glob(fn + '_{:s}.*[!png]'.format(pol)) for pol in polarizations]
             for pol, f in zip(polarizations, fns):
                 if len(f) != 1:
-                    raise FileNotFoundError('Need exactly one file matching each polarization')
+                    raise FileNotFoundError('Need exactly one file matching each polarization. %s' %f)
             fns = np.squeeze(fns)
-        elif len(fn) == 4:
+        elif (both_cross and len(fn) == 4) or (not both_cross and len(fn) == 3):
             fns = fn
         else:
             raise ValueError('fn must be a glob for files with _HH, _HV, etc., or a 4-tuple')
+
+        # repeat the cross-polarized acquisition
+        if not both_cross:
+            fns = [fns[0], fns[1], fns[1], fns[2]]
+
         single_acquisitions = [load_apres([f]) for f in fns]
 
         # Check that the data have gone through the initial processing steps
