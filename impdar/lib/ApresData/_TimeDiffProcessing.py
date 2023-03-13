@@ -42,6 +42,11 @@ def coherence(s1, s2):
         phase coherence
     """
 
+    # Filter vectors for nan values
+    idxs = np.isfinite(s1) & np.isfinite(s2)
+    s1 = s1[idxs]
+    s2 = s2[idxs]
+
     if hasattr(s1, '__len__') and hasattr(s2, '__len__'):
         top = np.sum(np.dot(s1, np.conj(s2)))
         bottom = np.sqrt(np.sum(np.abs(s1)**2.)*np.sum(np.abs(s2)**2.))

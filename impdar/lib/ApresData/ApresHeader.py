@@ -64,17 +64,19 @@ class ApresHeader():
         self.attenuator2 = None
         self.tx_ant = None
         self.rx_ant = None
+        self.interchirp_delay = None
 
         self.attrs = ['fsysclk','fs','fn','header_string','file_format','noDwellHigh','noDwellLow',
                     'f0','f_stop','ramp_up_step','ramp_down_step','tstep_up','tstep_down','snum','nsteps_DDS',
                     'chirp_length','chirp_grad','nchirp_samples','ramp_dir','f1','bandwidth','fc','er','ci','lambdac',
-                    'n_attenuators','attenuator1','attenuator2','tx_ant','rx_ant']
+                    'n_attenuators','attenuator1','attenuator2','tx_ant','rx_ant','interchirp_delay']
         self.attr_dims = ['none','none','none','none','none',
                         'none','none','none','none','none',
                         'none','none','none','none','none',
                         'none','none','none','none','none',
                         'none','none','none','none','none',
-                        'none','none','none','none','none']
+                        'none','none','none','none','none',
+                        'none']
 
     # --------------------------------------------------------------------------------------------
 
