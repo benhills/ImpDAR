@@ -65,6 +65,7 @@ jobs:
     - name: Install optional dependency GDAL
       if: ${{ matrix.gdal }}
       run: |
+        sudo apt-get install -y libcurl4-gnutls-dev
         sudo apt-get install libgdal-dev=3.0.4+dfsg-1build3
         export CPLUS_INCLUDE_PATH=/usr/include/gdal
         export C_INCLUDE_PATH=/usr/include/gdal
@@ -83,12 +84,12 @@ jobs:
     - name: Run tests GUI
       if: ${{ matrix.qt5 }}
       run: |
-        xvfb-run `which coverage` run --source impdar --omit=impdar/tests/*,impdar/lib/ApresData/*,impdar/lib/analysis/* -m pytest 
+        xvfb-run `which coverage` run --source impdar --omit=impdar/tests/*,impdar/lib/analysis/* -m pytest 
 
     - name: Run tests no GUI
       if: ${{ !matrix.qt5 }}
       run: |
-        coverage run --source impdar --omit=impdar/tests/*,impdar/lib/ApresData/*,impdar/lib/analysis/* -m pytest 
+        coverage run --source impdar --omit=impdar/tests/*,impdar/lib/analysis/* -m pytest 
 
     - name: Produce xml coverage
       run: coverage xml
@@ -225,8 +226,8 @@ jobs:
 
       - name: Collect packages
         run: |
-            mkdir dist
-            mv build*/* dist/
+            if [ ! -d dist ]; then mkdir dist; fi
+            for d in build*; do mv -f $d/* dist/; done
 
       - name: Publish distribution 📦 to Test PyPI
         uses: pypa/gh-action-pypi-publish@master
