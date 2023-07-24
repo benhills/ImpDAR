@@ -186,7 +186,6 @@ def load_pe(fn_dt1, *args, **kwargs):
             pe_data.version = '1.5.340'
         else:
             pe_data.version = '1.0'
-        pe_data.version = '1.5.340'
         fin.seek(0)
         for i, line in enumerate(fin):
             if 'TRACES' in line or 'NUMBER OF TRACES' in line:
@@ -204,7 +203,10 @@ def load_pe(fn_dt1, *args, **kwargs):
                 except ValueError:
                     doy = (int(line[:4]), int(line[5:7]), int(line[8:10]))
             if i == 2 and pe_data.version in ['1.5.340','1.6.956']:
-                doy = (int(line[6:10]), int(line[:2]), int(line[3:5]))
+                try:
+                    doy = (int(line[6:10]), int(line[:2]), int(line[3:5]))
+                except ValueError:
+                    doy = (int(line[:4]), datetime.datetime.strptime(str(line[5:8]), '%b').month, int(line[9:11]))
 
         day_offset = datetime.datetime(doy[0], doy[1], doy[2], 0, 0, 0)
 
