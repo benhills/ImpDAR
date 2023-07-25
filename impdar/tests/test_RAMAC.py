@@ -21,14 +21,14 @@ THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 class TestRAMAC(unittest.TestCase):
 
     def test_load_ramac_withgps(self):
-        a = load_ramac.load_ramac(os.path.join(THIS_DIR, 'input_data', 'ten_col.rd3'))
-        b = load_ramac.load_ramac(os.path.join(THIS_DIR, 'input_data', 'ten_col.rad'))
-        c = load_ramac.load_ramac(os.path.join(THIS_DIR, 'input_data', 'ten_col'))
+        a = load_ramac.load_ramac(os.path.join(THIS_DIR, 'input_data', 'ten_col.rd3'),ftype='.rd3')
+        b = load_ramac.load_ramac(os.path.join(THIS_DIR, 'input_data', 'ten_col.rad'),ftype='.rd3')
+        c = load_ramac.load_ramac(os.path.join(THIS_DIR, 'input_data', 'ten_col'),ftype='.rd3')
         self.assertTrue(np.all(a.data == b.data))
         self.assertTrue(np.all(a.data == c.data))
 
     def test_load_ramac_nogps(self):
-        load_ramac.load_ramac(os.path.join(THIS_DIR, 'input_data', 'ten_col_nogps.rd3'))
+        load_ramac.load_ramac(os.path.join(THIS_DIR, 'input_data', 'ten_col_nogps.rd3'),ftype='.rd3')
 
 
 if __name__ == '__main__':

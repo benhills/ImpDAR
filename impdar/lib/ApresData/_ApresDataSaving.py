@@ -20,7 +20,7 @@ from .ApresHeader import ApresHeader
 
 
 def save(self, fn):
-    """Save the radar data
+    """Save the apres data
 
     Parameters
     ----------
@@ -40,7 +40,7 @@ def save(self, fn):
 
 
 def save_mat(self, fn):
-    """Save the radar data as an ImpDAR .mat file
+    """Save the apres data as an ImpDAR .mat file
 
     Parameters
     ----------
@@ -93,8 +93,8 @@ def save_mat(self, fn):
     savemat(fn, mat)
 
 
-def save_h5(self, fn):
-    """Save the radar data as an h5 file
+def save_h5(self, fn, groupname='dat'):
+    """Save the apres data as an h5 file
 
     Parameters
     ----------
@@ -104,7 +104,7 @@ def save_h5(self, fn):
         Filename. Should have a .h5 extension
     """
     with h5py.File(fn, 'w') as f:
-        save_as_h5_group(self, f, 'dat')
+        save_as_h5_group(self, f, groupname=groupname)
 
 
 def save_as_h5_group(self, h5_file_descriptor, groupname='dat'):
@@ -128,14 +128,14 @@ def save_as_h5_group(self, h5_file_descriptor, groupname='dat'):
                     if hasattr(self, 'data_dtype') and self.data_dtype is not None:
                         dtype = self.data_dtype
                     else:
-                        dtype = 'f'
+                        dtype = np.dtype('f')
                 else:
                     dtype = val.dtype
                 grp.create_dataset(attr, data=val, dtype=dtype)
             else:
                 grp.attrs.create(attr, val)
         else:
-            grp.attrs[attr] = h5py.Empty('f')
+            grp.attrs[attr] = h5py.Empty(dtype = np.dtype('f'))
     for attr in self.attrs_optional:
         if hasattr(self, attr) and getattr(self, attr) is not None:
             val = getattr(self, attr)
@@ -144,7 +144,7 @@ def save_as_h5_group(self, h5_file_descriptor, groupname='dat'):
                     if hasattr(self, 'data_dtype') and self.data_dtype is not None:
                         dtype = self.data_dtype
                     else:
-                        dtype = 'f'
+                        dtype = np.dtype('f')
                 else:
                     # override the dtype for data
                     if attr == 'data':
@@ -153,6 +153,9 @@ def save_as_h5_group(self, h5_file_descriptor, groupname='dat'):
                 grp.create_dataset(attr, data=val, dtype=dtype)
             else:
                 grp.attrs.create(attr, val)
+        else:
+            print(attr)
+            grp.attrs.create(attr, h5py.Empty(dtype = np.dtype('f')))
 
     if self.flags is not None:
         self.flags.write_h5(grp)

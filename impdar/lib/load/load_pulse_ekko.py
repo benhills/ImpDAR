@@ -179,11 +179,16 @@ def load_pe(fn_dt1, *args, **kwargs):
         openmode_unicode = 'r'
 
     with open(hdname, openmode_unicode) as fin:
-        if fin.read().find('1.5.340') != -1:
-            pe_data.version = '1.5.340'
-        else:
+        fin_str = fin.read()
+
+        if fin_str.find('pulseEKKO') == -1:
             pe_data.version = '1.0'
+        else:
+            idx1 = fin_str.find('pulseEKKO')
+            idx2 = fin_str[idx1:].find('\n')
+            pe_data.version = fin_str[idx1+10:idx1+idx2]
         fin.seek(0)
+        print(pe_data.version)
         for i, line in enumerate(fin):
             if 'TRACES' in line or 'NUMBER OF TRACES' in line:
                 pe_data.tnum = int(line.rstrip('\n\r ').split(' ')[-1])
@@ -199,32 +204,37 @@ def load_pe(fn_dt1, *args, **kwargs):
                     doy = (int(line[6:10]), int(line[1:2]), int(line[3:5]))
                 except ValueError:
                     doy = (int(line[:4]), int(line[5:7]), int(line[8:10]))
-            if i == 2 and pe_data.version == '1.5.340':
-                doy = (int(line[6:10]), int(line[:2]), int(line[3:5]))
+            elif i == 2 and pe_data.version != '1.0':
+                try:
+                    doy = (int(line[6:10]), int(line[:2]), int(line[3:5]))
+                except ValueError:
+                    doy = (int(line[:4]), datetime.datetime.strptime(str(line[5:8]), '%b').month, int(line[9:11]))
+
+
         day_offset = datetime.datetime(doy[0], doy[1], doy[2], 0, 0, 0)
+        print(pe_data.tnum, pe_data.snum)
 
     if pe_data.version == '1.0':
         pe_data.data = np.zeros((pe_data.snum, pe_data.tnum), dtype=np.int16)
-    elif pe_data.version == '1.5.340':
+    else:
         pe_data.data = np.zeros((pe_data.snum, pe_data.tnum), dtype=np.float32)
 
     pe_data.traceheaders = TraceHeaders(pe_data.tnum)
     with open(true_fn, 'rb') as fin:
         lines = fin.read()
 
+    # Read out all the traces and place into data array
     offset = 0
     for i in range(pe_data.tnum):
         pe_data.traceheaders.get_header(offset, lines)
         offset += 25 * 4 + 28
-        if pe_data.version == '1.0':
-            trace = struct.unpack('<{:d}h'.format(pe_data.snum),
-                                  lines[offset: offset + pe_data.snum * 2])
-            offset += pe_data.snum * 2
-        elif pe_data.version == '1.5.340':
+        trace = struct.unpack('<{:d}h'.format(pe_data.snum),
+                              lines[offset: offset + pe_data.snum * 2])
+        offset += pe_data.snum * 2
+        if len(trace) != pe_data.snum:
             fmt = '<%df' % (len(lines[offset: offset + pe_data.snum * 4]) // 4)
             trace = struct.unpack(fmt, lines[offset:offset + pe_data.snum * 4])
             offset += pe_data.snum * 4
-
         trace -= np.nanmean(trace[:100])
         pe_data.data[:, i] = trace.copy()
 
