@@ -118,7 +118,16 @@ def hhmmss2dec(times):
     s = times % 100
     m = (times % 10000 - s) / 100
     h = (times - m * 100 - s) / 10000
-    return (h + m / 60.0 + s / 3600.0) / 24.0
+    d = (h + m / 60.0 + s / 3600.0) / 24.0
+
+    if hasattr(times,'__len__'):
+        # deal with day rollover
+        daybreak = np.argwhere(np.diff(d)<-.5)
+        if len(daybreak) > 0:
+            idx = daybreak[0][0] + 1
+            d[idx:] += 1.
+
+    return d
 
 
 class nmea_info:
@@ -333,7 +342,7 @@ class RadarGPS(nmea_info):
                           self.nmea_info.z[kgps_indx], kind='linear',
                           fill_value='extrapolate')(trace_num)
         self.times = interp1d(self.nmea_info.scans[kgps_indx],
-                              self.nmea_info.times[kgps_indx],
+                              self.nmea_info.dectime[kgps_indx],
                               kind='linear',
                               fill_value='extrapolate')(trace_num)
         if conversions_enabled:

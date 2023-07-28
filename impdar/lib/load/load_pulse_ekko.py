@@ -97,6 +97,11 @@ def _get_gps_data(fn_gps, trace_nums):
             ggis.append(line)
         elif line[:6] == '$GPGGA':
             gga.append(line)
+        elif len(line.split('"')) > 1:
+            trace_num = int(line.split(',')[0])
+            time = float(line.split(',')[3])
+            ggis.append('Trace #'+str(trace_num)+' at time '+str(time)+'\n')
+            gga.append(line.split('"')[1])
         else:
             continue
     if len(gga) == 0:
@@ -159,6 +164,15 @@ def partition_project_file(fn_project):
         with open('LINE' + str(profile_num) + '.DT1', 'wb') as fout:
             fout.write(dt_str)
 
+        # Get the gps file
+        gps_start = f.find(b'line%d.gp2' % (profile_num))
+        gps_start += len(b'line%d.gp2' % (profile_num))
+        gps_end = f[gps_start:].find(b'PK') + gps_start
+        gps_str = f[gps_start:gps_end]
+        # Write to the data file
+        with open('LINE' + str(profile_num) + '.GPS', 'wb') as fout:
+            fout.write(gps_str)
+
         profile_num += 1
 
 
@@ -170,6 +184,9 @@ def load_pe(fn_dt1, *args, **kwargs):
     hdname = bn_pe + '.HD'
     true_fn = bn_pe + '.DT1'
     gps_fn = bn_pe + '.GPS'
+    if not os.path.exists(gps_fn):
+        gps_fn = bn_pe + '.gp2'
+
 
     try:
         strtypes = (unicode, str)
@@ -188,7 +205,6 @@ def load_pe(fn_dt1, *args, **kwargs):
             idx2 = fin_str[idx1:].find('\n')
             pe_data.version = fin_str[idx1+10:idx1+idx2]
         fin.seek(0)
-        print(pe_data.version)
         for i, line in enumerate(fin):
             if 'TRACES' in line or 'NUMBER OF TRACES' in line:
                 pe_data.tnum = int(line.rstrip('\n\r ').split(' ')[-1])
@@ -209,10 +225,7 @@ def load_pe(fn_dt1, *args, **kwargs):
                     doy = (int(line[6:10]), int(line[:2]), int(line[3:5]))
                 except ValueError:
                     doy = (int(line[:4]), datetime.datetime.strptime(str(line[5:8]), '%b').month, int(line[9:11]))
-
-
         day_offset = datetime.datetime(doy[0], doy[1], doy[2], 0, 0, 0)
-        print(pe_data.tnum, pe_data.snum)
 
     if pe_data.version == '1.0':
         pe_data.data = np.zeros((pe_data.snum, pe_data.tnum), dtype=np.int16)
@@ -225,16 +238,22 @@ def load_pe(fn_dt1, *args, **kwargs):
 
     # Read out all the traces and place into data array
     offset = 0
+    if pe_data.tnum*pe_data.snum < len(lines)/4.:
+        mult = 4
+    else:
+        mult = 2
+    print('trace_read_mult:',mult)
+    print('#samples:',pe_data.tnum*pe_data.snum)
+    print('len lines:',len(lines))
     for i in range(pe_data.tnum):
         pe_data.traceheaders.get_header(offset, lines)
         offset += 25 * 4 + 28
-        trace = struct.unpack('<{:d}h'.format(pe_data.snum),
-                              lines[offset: offset + pe_data.snum * 2])
-        offset += pe_data.snum * 2
-        if len(trace) != pe_data.snum:
+        if mult == 2:
+            fmt = '<{:d}h'.format(pe_data.snum)
+        elif mult == 4:
             fmt = '<%df' % (len(lines[offset: offset + pe_data.snum * 4]) // 4)
-            trace = struct.unpack(fmt, lines[offset:offset + pe_data.snum * 4])
-            offset += pe_data.snum * 4
+        trace = struct.unpack(fmt, lines[offset:offset + pe_data.snum * mult])
+        offset += pe_data.snum * mult
         trace -= np.nanmean(trace[:100])
         pe_data.data[:, i] = trace.copy()
 
@@ -263,8 +282,8 @@ def load_pe(fn_dt1, *args, **kwargs):
         pe_data.trace_int = np.hstack((np.array(np.nanmean(
             np.diff(pe_data.dist))), np.diff(pe_data.dist)))
 
-        tmin = day_offset.toordinal() + np.min(pe_data.gps_data.dectime) + 366.
-        tmax = day_offset.toordinal() + np.max(pe_data.gps_data.dectime) + 366.  # 366 for matlab compatability
+        tmin = day_offset.toordinal() + np.min(pe_data.gps_data.times) + 366.
+        tmax = day_offset.toordinal() + np.max(pe_data.gps_data.times) + 366.  # 366 for matlab compatability
         pe_data.decday = np.linspace(tmin, tmax, pe_data.tnum)
 
     else:

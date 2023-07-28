@@ -338,6 +338,8 @@ class RadarData(object):
             A text string accepted by GDAL (e.g. EPSG:3031)
             If None (default) use UTM.
         """
+        if np.all(self.long>180.):
+            self.long -= 360.
         if t_srs is not None:
             transform, self.t_srs = gpslib.get_conversion(t_srs=t_srs)
         else:
