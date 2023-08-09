@@ -215,6 +215,8 @@ def load_pe(fn_dt1, *args, **kwargs):
             if 'TIMEZERO' in line or 'TIMEZERO AT POINT' in line:
                 pe_data.trig = int(float(line.rstrip('\n\r ').split(' ')[-1])
                                    ) * np.ones((pe_data.tnum,))
+            if 'DATA TYPE' in line:
+                pe_data.load_dtype = line.rstrip('\n\r ').split(' ')[-1]
             if i == 4 and pe_data.version == '1.0':
                 try:
                     doy = (int(line[6:10]), int(line[1:2]), int(line[3:5]))
@@ -238,23 +240,18 @@ def load_pe(fn_dt1, *args, **kwargs):
 
     # Read out all the traces and place into data array
     offset = 0
-    if pe_data.tnum*pe_data.snum < len(lines)/4.:
-        mult = 4
-    else:
-        mult = 2
-    print('trace_read_mult:',mult)
-    print('#samples:',pe_data.tnum*pe_data.snum)
-    print('len lines:',len(lines))
     for i in range(pe_data.tnum):
         pe_data.traceheaders.get_header(offset, lines)
         offset += 25 * 4 + 28
-        if mult == 2:
+        if load_dtype == "I*2":
             fmt = '<{:d}h'.format(pe_data.snum)
-        elif mult == 4:
-            fmt = '<%df' % (len(lines[offset: offset + pe_data.snum * 4]) // 4)
+            mult = 2
+        elif load_dtype == "F*4":
+            fmt = '<{:d}f'.format(pe_data.snum)
+            mult = 4
         trace = struct.unpack(fmt, lines[offset:offset + pe_data.snum * mult])
         offset += pe_data.snum * mult
-        trace -= np.nanmean(trace[:100])
+        #trace -= np.nanmedian(trace[:100])
         pe_data.data[:, i] = trace.copy()
 
     # known vars that are not really set
