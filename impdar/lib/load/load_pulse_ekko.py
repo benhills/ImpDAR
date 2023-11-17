@@ -238,20 +238,21 @@ def load_pe(fn_dt1, *args, **kwargs):
     with open(true_fn, 'rb') as fin:
         lines = fin.read()
 
+    pe_data.load_dtype = "I*2"
     # Read out all the traces and place into data array
     offset = 0
     for i in range(pe_data.tnum):
         pe_data.traceheaders.get_header(offset, lines)
         offset += 25 * 4 + 28
-        if load_dtype == "I*2":
+        if pe_data.load_dtype == "I*2":
             fmt = '<{:d}h'.format(pe_data.snum)
             mult = 2
-        elif load_dtype == "F*4":
+        elif pe_data.load_dtype == "F*4":
             fmt = '<{:d}f'.format(pe_data.snum)
             mult = 4
-        trace = struct.unpack(fmt, lines[offset:offset + pe_data.snum * mult])
+        trace = np.asarray(struct.unpack(fmt, lines[offset:offset + pe_data.snum * mult]))
         offset += pe_data.snum * mult
-        #trace -= np.nanmedian(trace[:100])
+        #trace -= np.nanmedian(trace[:100]) # Not sure where this came from??
         pe_data.data[:, i] = trace.copy()
 
     # known vars that are not really set
