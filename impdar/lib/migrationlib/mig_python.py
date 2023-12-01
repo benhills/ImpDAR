@@ -29,22 +29,19 @@ import sys
 import numpy as np
 import time
 from scipy import sparse
-from scipy.interpolate import griddata, interp2d, interp1d
+from scipy.interpolate import griddata, interp1d, RectBivariateSpline
 
 
 def migrationKirchhoffLoop(data, migdata, tnum, snum, dist, zs, zs2, tt_sec, vel, gradD, max_travel_time, nearfield):
-    # Loop through all traces
+    # Loop through every point in the image (trace and sample)
+    # to look for a hyperbola propagating away from that point
     print('Migrating trace number:')
     for xi in range(tnum):
         print('{:d}, '.format(xi), end='')
         sys.stdout.flush()
-        # get the trace distance
-        x = dist[xi]
-        dists2 = (dist - x)**2.
-        # Loop through all samples
         for ti in range(snum):
-            # get the radial distances between input point and output point
-            rs = np.sqrt(dists2 + zs2[ti])
+            # get the radial distances between points and the surface location for this trace
+            rs = np.sqrt((dist - dist[xi])**2. + zs2[ti])
             # find the cosine of the angle of the tangent line, correct for obliquity factor
             with np.errstate(invalid='ignore'):
                 costheta = zs[ti] / rs
@@ -104,7 +101,19 @@ def migrationKirchhoff(dat, vel=1.69e8, nearfield=False):
     zs = vel * tt_sec / 2.0
     zs2 = zs**2.
 
-    migrationKirchhoffLoop(dat.data.astype(np.float64), migdata, dat.tnum, dat.snum, dat.dist.astype(np.float64), zs.astype(np.float64), zs2.astype(np.float64), tt_sec.astype(np.float64), vel, gradD.astype(np.float64), max_travel_time, nearfield)
+    migrationKirchhoffLoop(dat.data.astype(np.float64),
+                          migdata,
+                          dat.tnum,
+                          dat.snum,
+                          np.ascontiguousarray(dat.dist, dtype=np.float64) * 1.0e3,
+                          np.ascontiguousarray(zs, dtype=np.float64),
+                          np.ascontiguousarray(zs2, dtype=np.float64),
+                          np.ascontiguousarray(tt_sec, dtype=np.float64),
+                          vel,
+                          np.ascontiguousarray(gradD, dtype=np.float64),
+                          max_travel_time,
+                          nearfield
+                          )
 
     dat.data = migdata.copy()
     # print the total time
@@ -145,11 +154,11 @@ def migrationStolt(dat,vel=1.68e8,htaper=100,vtaper=1000):
     h[h>1.] = 1.
     v[v>1.] = 1.
     H,V = np.meshgrid(h,v)
-    dat.data *= H*V
+    dat.data = (dat.data*H*V).astype(dat.data.dtype)
     # 2D Forward Fourier Transform to get data in frequency-wavenumber space, FK = D(kx,z=0,ws)
-    FK = np.fft.fft2(dat.data,(dat.snum,dat.tnum))[:dat.snum//2]
+    FK = np.fft.rfft2(dat.data, axes=(1, 0))
     # get the temporal frequencies
-    ws = 2.*np.pi*np.fft.fftfreq(dat.snum, d=dat.dt)[:dat.snum//2]
+    ws = 2.*np.pi*np.fft.rfftfreq(dat.snum, d=dat.dt)
     # get the horizontal wavenumbers
     if np.mean(dat.trace_int) <= 0:
         Warning("The trace spacing, variable 'dat.trace_int', should be greater than 0. Using gradient(dat.dist) instead.")
@@ -158,14 +167,16 @@ def migrationStolt(dat,vel=1.68e8,htaper=100,vtaper=1000):
         trace_int = dat.trace_int
     kx = 2.*np.pi*np.fft.fftfreq(dat.tnum, d=np.mean(trace_int))
     # interpolate from frequency (ws) into wavenumber (kz)
-    interp_real = interp2d(kx,ws,FK.real)
-    interp_imag = interp2d(kx,ws,FK.imag)
+    print(kx.shape, ws.shape, FK.real.shape)
+    interp_real = RectBivariateSpline(np.fft.fftshift(kx), ws, np.fft.fftshift(FK.real, axes=[1]).T, kx=1, ky=1)
+    interp_imag = RectBivariateSpline(np.fft.fftshift(kx), ws, np.fft.fftshift(FK.imag, axes=[1]).T, kx=1, ky=1)
+
     # interpolation will move from frequency-wavenumber to wavenumber-wavenumber, KK = D(kx,kz,t=0)
     KK = np.zeros_like(FK)
     print('Interpolating from temporal frequency (ws) to vertical wavenumber (kz):')
     print('Interpolating:')
     # for all temporal frequencies
-    for zj in range(dat.snum//2):
+    for zj in range(dat.snum // 2):
         kzj = ws[zj]*2./vel
         if zj%100 == 0:
             print(int(ws[zj]/1e6/2/np.pi), 'MHz, ', end='')
@@ -176,7 +187,7 @@ def migrationStolt(dat,vel=1.68e8,htaper=100,vtaper=1000):
             # migration conversion to wavenumber (Yilmaz equation C.53)
             wsj = vel/2.*np.sqrt(kzj**2.+kxi**2.)
             # get the interpolated FFT values, real and imaginary, S(kx,kz,t=0)
-            KK[zj,xi] = interp_real(kxi,wsj) + 1j*interp_imag(kxi,wsj)
+            KK[zj,xi] = interp_real(kxi,wsj)[0, 0] + 1j*interp_imag(kxi,wsj)[0, 0]
     # all vertical wavenumbers
     kz = ws*2./vel
     # grid wavenumbers for scaling calculation
@@ -188,15 +199,7 @@ def migrationStolt(dat,vel=1.68e8,htaper=100,vtaper=1000):
     # the DC frequency should be 0.
     KK[0,0] = 0.+0j
     # 2D Inverse Fourier Transform to get back to distance spce, D(x,z,t=0)
-    dat.data = np.real(np.fft.ifft2(KK))
-    # Cut array to input matrix dimensions
-    dat.data = dat.data[:dat.snum,:dat.tnum]
-
-    # this changes the vertical scale
-    print('Rescaling TWTT')
-    dat.travel_time = dat.travel_time[::2]
-    dat.dt = dat.dt * 2.
-    dat.snum = dat.data.shape[0]
+    dat.data = np.fft.irfft2(KK, axes=(1, 0))
 
     # print the total time
     print('')
@@ -431,7 +434,7 @@ def phaseShift(dat, vmig, vels_in, kx, ws, FK):
             print('1-D velocity structure, Gazdag Migration')
             print('Velocities (m/s): %.2e',vels_in[:,0])
             print('Depths (m):',vels_in[:,1])
-            print('Travel Times ($\mu$ sec):',dat.travel_time)
+            print(r'Travel Times ($\mu$ sec):',dat.travel_time)
         # iterate through all output travel times
         for itau in range(dat.snum):
             tau = dat.travel_time[itau] / 1.0e6

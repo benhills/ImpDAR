@@ -33,7 +33,8 @@ def reverse(self):
     self.decday = np.flip(self.decday, 0)
     self.lat = np.flip(self.lat, 0)
     self.long = np.flip(self.long, 0)
-    self.elev = np.flip(self.elev, 0)
+    if self.elev is not None:
+        self.elev = np.flip(self.elev, 0)
     if self.picks is not None:
         self.picks.reverse()
 
@@ -280,8 +281,9 @@ def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8, rezero=T
             ind = self.trig.astype(int)
     else:
         ind = int(lim)
-
+        
     if not isinstance(ind, np.ndarray) or (dimension != 'pretrig'):
+
         if top_or_bottom == 'top':
             lims = [ind, self.data.shape[0]]
             self.trig = self.trig - ind
@@ -293,6 +295,12 @@ def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8, rezero=T
         self.travel_time = self.travel_time[lims[0]:lims[1]]
         if rezero:
             self.travel_time = self.travel_time - self.travel_time[0]
+
+        if self.nmo_depth is not None:
+            if top_or_bottom == 'top':
+                self.nmo_depth = self.nmo_depth[lims[0]:lims[1]]
+            else:
+                self.nmo_depth = self.nmo_depth[lims[0]:lims[1]]
         self.snum = self.data.shape[0]
         mintrig = 0
     else:
@@ -538,7 +546,7 @@ def constant_space(self, spacing, min_movement=1.0e-2, show_nomove=False):
                           step=spacing / 1000.0)
 
     # interp1d can only handle real values
-    if self.data.dtype in [np.complex128]:
+    if np.iscomplexobj(self.data.dtype):
         self.data = interp1d(temp_dist, np.real(self.data[:, good_vals]))(new_dists) + 1.j * interp1d(temp_dist, np.imag(self.data[:, good_vals]))(new_dists)
     else:
         self.data = interp1d(temp_dist, self.data[:, good_vals])(new_dists)
@@ -617,7 +625,7 @@ def elev_correct(self, v_avg=1.69e8):
         self.data[top_ind: top_ind + data_old.shape[0], i] = data_old[:, i]
 
     if hasattr(self, 'picks') and self.picks is not None:
-        self.picks.crop(-top_inds)
+        self.picks.crop(-top_inds - 1)
 
     self.elevation = np.hstack((np.arange(np.max(self.elev), np.min(self.elev), -dz_avg),
                                 np.min(self.elev) - self.nmo_depth))

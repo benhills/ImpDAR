@@ -263,6 +263,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             for center, bottom, top in zip(self.cline, self.bline, self.tline):
                 if center is not None:
                     center.set_pickradius(5)
+                    center.set_picker(5)
                     bottom.set_pickradius(5)
                     top.set_pickradius(5)
 
@@ -466,7 +467,6 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-
     def _auto_click(self, event, point_color='m'):
         """Click with auto on.
 
@@ -633,7 +633,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
                                             self.dat.fn[:-4] + '.shp',
                                             "All Files (*);;shp Files (*.shp)")
         if fn:
-            self.dat.output_shp(fn)
+            self.dat.output_ogr(fn)
 
     ######
     # Decorators for processing
