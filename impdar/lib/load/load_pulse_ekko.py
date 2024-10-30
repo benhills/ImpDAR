@@ -188,7 +188,6 @@ def load_pe(fn_dt1, *args, **kwargs):
             idx2 = fin_str[idx1:].find('\n')
             pe_data.version = fin_str[idx1+10:idx1+idx2]
         fin.seek(0)
-        print(pe_data.version)
         for i, line in enumerate(fin):
             if 'TRACES' in line or 'NUMBER OF TRACES' in line:
                 pe_data.tnum = int(line.rstrip('\n\r ').split(' ')[-1])
