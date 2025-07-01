@@ -123,3 +123,53 @@ def load_mcords_mat(fn_mat):
 
     return mcords_data
 
+
+def load_mcords_mat_complex(fn_mat):
+    """
+    Load MCoRDS data as .mat format downloaded from the CReSIS ftp client
+
+    Parameters
+    ----------
+    fn_mat: str
+        The filename to load
+    """
+
+    mcords_data = RadarData(None)
+    mcords_data.fn = fn_mat
+
+    try:
+        mat = loadmat(fn_mat)
+    except:
+        mat = h5py.File(fn_mat, 'r')
+
+    if ('Data' not in mat) or ('Longitude' not in mat):
+        if ('data' in mat) and ('long' in mat):
+            raise KeyError('It appears that this mat file is ImpDAR/StoDeep, not MCoRDS')
+        else:
+            raise KeyError('ImpDAR cannot read this type of mat file--it does not appear to be MCoRDS')
+    mcords_data.data = np.transpose(np.real(10.*np.log10(np.squeeze(mat['Data'])['real']+1j*np.squeeze(mat['Data'])['imag'])))
+    mcords_data.long = np.squeeze(mat['Longitude'])
+    mcords_data.lat = np.squeeze(mat['Latitude'])
+    # sometimes the mcords data array is transposed, so check and fix
+    if np.shape(mcords_data.data)[1] != np.shape(mcords_data.lat) and np.shape(mcords_data.data)[0] == np.shape(mcords_data.lat)[0]:
+        mcords_data.data = np.transpose(mcords_data.data)
+    # time has units of seconds according to documentation, but this seems wrong
+    # numbers are way too big. Leaving it since that is how it is documented though?
+    partial_days = np.squeeze(mat['GPS_time']) / (24. * 60. * 60.)
+    start_day = datetime.datetime(1970,1,1,0,0,0).toordinal() + 366.
+    mcords_data.decday = partial_days + start_day
+    mcords_data.trace_int = mcords_data.decday[1] - mcords_data.decday[0]
+    mcords_data.travel_time = np.squeeze(mat['Time'])*1e6
+    mcords_data.dt = np.mean(np.diff(mcords_data.travel_time)) * 1.0e-6
+    size = np.shape(mcords_data.data)
+    mcords_data.snum, mcords_data.tnum = int(size[0]), int(size[1])
+    mcords_data.trace_num = np.arange(mcords_data.tnum) + 1
+
+    mcords_data.chan = 0
+    mcords_data.pressure = np.zeros_like(mcords_data.decday)
+    mcords_data.trig = np.zeros_like(mcords_data.decday).astype(int)
+    mcords_data.trig_level = 0.
+    mcords_data.check_attrs()
+
+    return mcords_data
+
